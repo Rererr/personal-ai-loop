@@ -190,7 +190,8 @@ def main():
         assert (home / ".claude/skills/personal-retro/SKILL.md").is_file()
 
         transcript = base / "claude.jsonl"
-        rows = [user("APIとは違う。間違いない。"), user("<system-reminder>やり直して</system-reminder>"),
+        rows = [user("引き継ぎです。勝手に rebase・push をしない方針で進めてください"),
+                user("APIとは違う。間違いない。"), user("<system-reminder>やり直して</system-reminder>"),
                 user("# AGENTS.md instructions\n勝手に書かない"),
                 {"type": "assistant", "message": {"content": "やり直します"}},
                 user("そうじゃない。勝手に変更しないで"),
@@ -206,7 +207,7 @@ def main():
         assert [s["kind"] for s in pending] == ["fix", "approve"]
         assert "そうじゃない" not in (state / "queue.sqlite3").read_bytes().decode("utf-8", errors="ignore")
         evidence = json.loads(run("loop.py", *cli, "inspect", pending[0]["id"]))
-        assert evidence[0]["evidence"]["text"] == rows[4]["message"]["content"]
+        assert evidence[0]["evidence"]["text"] == rows[5]["message"]["content"]
         old_ids = [s["id"] for s in pending]
         rows.append(user("余計な処理がまだある。戻して"))
         write_rows(transcript, rows)
@@ -229,6 +230,7 @@ def main():
         codex_log = base / "codex.jsonl"
         msg = "やり直して"
         write_rows(codex_log, [
+            {"type": "event_msg", "payload": {"type": "user_message", "message": "最初の依頼"}},
             {"type": "response_item", "payload": {"type": "message", "role": "user",
              "content": [{"type": "input_text", "text": msg}]}},
             {"type": "event_msg", "payload": {"type": "user_message", "message": msg}},
@@ -239,6 +241,8 @@ def main():
         run("loop.py", *cli, "hook", "stop", "--tool", "codex", data=event)
         assert len(json.loads(run("loop.py", *cli, "queue"))) == 2
         write_rows(codex_log, [{"type": "response_item", "payload": {"type": "message", "role": "user",
+                    "content": [{"type": "input_text", "text": "first task"}]}},
+                               {"type": "response_item", "payload": {"type": "message", "role": "user",
                     "content": [{"type": "input_text", "text": "That's wrong. Undo that."}]}}])
         assert len(list(signals(codex_log))) == 1
         with codex_log.open("a") as stream:

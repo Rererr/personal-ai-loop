@@ -81,8 +81,13 @@ def transcript_cwd(path):
 
 def signals(path):
     # ponytail: 日英の表現ヒューリスティック。誤検知は振り返りで棄却し、他言語は実例が出たら追加する。
+    first = True
     for ordinal, (line_number, body) in enumerate(messages(path)):
-        if body.lstrip().startswith(EXCLUDED) or "❯" in body:
+        if body.lstrip().startswith(EXCLUDED) or "❯" in body or not body.strip():
+            continue
+        # 最初の発言は作業指示であり、この会話での行動への修正・承認ではない（引き継ぎ文の「勝手に…しない」で誤検知した実例）。
+        if first:
+            first = False
             continue
         clean = "\n".join(line for line in body.splitlines()
                           if not line.lstrip().startswith("<")
