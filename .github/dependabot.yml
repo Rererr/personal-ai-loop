@@ -10,7 +10,7 @@ updates:
     commit-message:
       prefix: "ci"
     groups:
-      actions-minor-patch:
-        update-types:
-          - "minor"
-          - "patch"
+      # メジャーも含めて1本の PR にまとめ、CI の実行回数とレビュー回数を減らす
+      actions-all:
+        patterns:
+          - "*"
