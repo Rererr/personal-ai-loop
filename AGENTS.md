@@ -6,3 +6,4 @@
 - インストーラーは他の Hook とスキルを保持し、旧機構は削除でなく退避する。テストは仮のホームだけを使う。
 - knowledge の検査規則の正本は `templates/knowledge/scripts/check.py`。`loop.py` はそれを呼ぶだけで複製しない。
 - コメントは日本語で、コードから読めない制約か採らなかった実装の理由だけを書く。
+- clone 直後に `git config core.hooksPath githooks`（gitleaks の pre-commit）。CI は `.github/workflows/ci.yml` で同じテストと gitleaks を走らせる。

@@ -13,15 +13,15 @@ Claude Code や Codex で受けた修正・承認を、自分の環境の改善�
 ```
 
 チームの共有資産は [TeamAI](https://github.com/Tencent/teamai-cli) で配ります。
-その雛形は [team-ai-starter](../team-ai-starter) にあり、この仕組みと役割を分けています。
+その雛形は [team-ai-starter](https://github.com/Rererr/team-ai-starter) にあり、この仕組みと役割を分けています。
 
 ## 導入
 
-Python 3.9 以上と Git、macOS または Linux が前提です。Python 標準ライブラリだけを使います。
+Python 3.9 以上と Git 2.28 以上、macOS または Linux が前提です。Python 標準ライブラリだけを使います。
 このリポジトリを任意の場所へ clone し、そのディレクトリで対話セットアップを実行します。
 
 ```bash
-git clone https://github.com/YOUR-NAME/personal-ai-loop.git
+git clone https://github.com/Rererr/personal-ai-loop.git
 cd personal-ai-loop
 python3 install.py
 ```
