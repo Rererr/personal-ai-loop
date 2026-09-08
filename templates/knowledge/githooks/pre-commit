@@ -1,0 +1,11 @@
+#!/bin/sh
+# ノート形式・索引整合（scripts/check.py）と、入っていれば秘密情報（gitleaks）を検査する
+set -e
+root="$(git rev-parse --show-toplevel)"
+
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks git --pre-commit --staged --redact
+else
+  echo "pre-commit 注意: gitleaks が未導入のため秘密情報の検査を省いた（brew install gitleaks）" >&2
+fi
+python3 "$root/scripts/check.py"

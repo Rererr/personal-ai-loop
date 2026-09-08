@@ -1,0 +1,10 @@
+#!/usr/bin/env python3
+"""`pal` = personal-ai-loop の短い呼び名。symlink 越しでも配布ディレクトリの loop.py を実行する。"""
+import runpy
+import sys
+from pathlib import Path
+
+APP = Path(__file__).resolve().parent
+sys.path.insert(0, str(APP))
+sys.argv[0] = str(APP / "loop.py")
+runpy.run_path(sys.argv[0], run_name="__main__")
