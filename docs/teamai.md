@@ -50,11 +50,11 @@ TeamAI は SessionStart の `teamai pull` のたびに、スキル利用回数�
 この送信を止める設定は 0.22.0 にありません（HTTP モードのチームだけは送りません）。
 チームへ展開する前に、この挙動をメンバーへ説明してください。
 
-## 上流への提案候補
+## 上流への提案（2026-09-08 に PR 提出済み）
 
-次の2点は上流に出す価値があります。personal-ai-loop 側では回避せず、提案の判断を本人に委ねます。
+次の2点は personal-ai-loop 側で回避せず、上流へ PR として出しました。マージされるまでは上の制約が残ります。
 
-1. `CORRECTION_KEYWORDS` に日本語の訂正表現（「違う」「やり直し」「勝手に」など）を加える。personal-ai-loop の検出パターンをそのまま使えます
-2. `sharing.contributeHint.enabled` のような、共有の案内だけを止める設定を加える。対象は `contributeCheckForSession()` と `takePendingHint()` の2関数です
+1. [Tencent/teamai-cli#431](https://github.com/Tencent/teamai-cli/pull/431): `CORRECTION_KEYWORDS` に日本語の訂正表現（「違う」「やり直し」「勝手に」など）を追加
+2. [Tencent/teamai-cli#432](https://github.com/Tencent/teamai-cli/pull/432): `sharing.contributeHint.enabled`（チーム既定）、`contributeHintEnabled`（本人の上書き）、`TEAMAI_CONTRIBUTE_HINT_DISABLED=1` で共有の案内だけを止める設定を追加
 
 確認対象: [Hooks 登録](https://github.com/Tencent/teamai-cli/blob/0ec7b77b3663b9f72bb8b0b4532e722be6c1c159/src/hook-handlers.ts)、[共有提案](https://github.com/Tencent/teamai-cli/blob/0ec7b77b3663b9f72bb8b0b4532e722be6c1c159/src/contribute-check.ts)、[設定スキーマと訂正キーワード](https://github.com/Tencent/teamai-cli/blob/0ec7b77b3663b9f72bb8b0b4532e722be6c1c159/src/types.ts)、[内蔵 Hook の無効化](https://github.com/Tencent/teamai-cli/blob/0ec7b77b3663b9f72bb8b0b4532e722be6c1c159/src/builtin-hooks.ts)。
