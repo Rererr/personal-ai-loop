@@ -46,7 +46,8 @@ def extended():
                              user("違う、そうじゃない。やり直して")])
         (claude / "retro/queue.md").write_text(
             f"- 2026-09-07 16:30 session=s1 修正指示1件 承認0件 transcript={old_log}\n"
-            f"- 2026-09-01 10:00 session=s0 修正指示1件 承認0件 transcript={base}/gone.jsonl\n", encoding="utf-8")
+            f"- 2026-09-01 10:00 session=s0 修正指示1件 承認0件 transcript={base}/gone.jsonl\n"
+            "- 2026-08-01 形式の合わない行\n", encoding="utf-8")
         (claude / "settings.json").write_text(json.dumps({"hooks": {"Stop": [{"hooks": [
             {"type": "command", "command": shlex.join(["bash", str(claude / "hooks/stop-feedback-detector.sh")])}]}]}}))
         state = home / ".local/state/personal-ai-loop"
@@ -54,9 +55,12 @@ def extended():
         env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com",
                "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com"}
 
+        home_only = json.loads(run("loop.py", "--home", home, "status", "--json"))
+        assert home_only["state"] == str(home / ".local/state/personal-ai-loop")
+        assert (home / ".local/state/personal-ai-loop/queue.sqlite3").is_file()
         before = json.loads(run("loop.py", *cli, "status", "--json"))
-        assert before["tools"]["claude"]["legacy_queue"] == 2 and before["tools"]["claude"]["hooks"] == []
-        assert "旧キュー 2件" in run("loop.py", *cli, "status") and "knowledge: 未設定" in run("loop.py", *cli, "status")
+        assert before["tools"]["claude"]["legacy_queue"] == 3 and before["tools"]["claude"]["hooks"] == []
+        assert "旧キュー 3件" in run("loop.py", *cli, "status") and "knowledge: 未設定" in run("loop.py", *cli, "status")
 
         # 対話セットアップ: 両ツール、旧機構の置換と退避、knowledge 新規作成、適用
         answers = f"claude,codex\ny\ny\n3\n{home / 'knowledge'}\ngit@example.com:me/knowledge.git\ny\n"
@@ -65,6 +69,7 @@ def extended():
                                 input=answers, capture_output=True, text=True, env=env)
         assert result.returncode == 0, (result.stdout, result.stderr)
         assert "knowledge を登録" in result.stdout and '"missing": ["' in result.stdout
+        assert '"unparsed": ["- 2026-08-01 形式の合わない行"]' in result.stdout
         settings = json.loads((claude / "settings.json").read_text())
         assert [h["command"] for g in settings["hooks"]["Stop"] for h in g["hooks"]] == [shlex.join(
             [sys.executable, str(home / ".local/share/personal-ai-loop/app/loop.py"), "--state", str(state),
@@ -133,6 +138,22 @@ def extended():
         assert "hooks" not in json.loads((claude / "settings.json").read_text())
         assert (clone_to / "README.md").is_file() and (state / "queue.sqlite3").is_file()
         run("install.py", "--home", home, "--retire-legacy", "--tool", "claude", ok=False)
+        run("install.py", "--home", home, "--retire-legacy", "--replace-legacy", "--uninstall", "--tool", "claude", ok=False)
+        # 整形だけが違う設定は、削除でも導入でも書き換えない
+        pretty = json.dumps({"permissions": {"allow": []}}, indent=4) + "\n\n"
+        (claude / "settings.json").write_text(pretty)
+        run("install.py", "--home", home, "--root", f"claude={claude}", "--tool", "claude", "--uninstall", "--apply")
+        assert (claude / "settings.json").read_text() == pretty
+        assert '"changed": false' in run("install.py", "--home", home, "--root", f"claude={claude}", "--tool", "claude", "--uninstall")
+        # 受け入れない clone 先は残さない
+        bare = base / "noreadme"
+        bare.mkdir()
+        subprocess.run(["git", "init", "-q", str(bare)], check=True)
+        (bare / "x.txt").write_text("x")
+        subprocess.run(["git", "-C", str(bare), "add", "-A"], check=True)
+        subprocess.run(["git", "-C", str(bare), "commit", "-qm", "x"], check=True, env=env)
+        run("loop.py", *cli, "knowledge", "clone", bare, home / "rejected", ok=False)
+        assert not (home / "rejected").exists()
     print("PASS: 対話セットアップ・--root・旧機構退避と取り込み・status・knowledge 作成/検査/clone/登録替え・pal")
 
 

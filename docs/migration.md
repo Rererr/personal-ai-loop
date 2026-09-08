@@ -38,8 +38,8 @@ python3 install.py --tool claude --tool codex --replace-legacy --retire-legacy -
 
 `--retire-legacy` は、上の2スクリプトと `hooks/lib/extract-feedback.sh`、`retro/`（旧キューと処理済み台帳）、`skills/retro/` を、ローカルデータの `backups/<日時>/legacy/<tool>/` へ移動します。
 移動の前に `retro/queue.md` の各行から transcript を読み直し、現行の検出ルールで候補を新しいキューへ入れます。
-旧キューは作業パスを持たないため、transcript 内の記録から補います。
-transcript が消えている行は `missing` として報告し、内容は推測しません。
+旧キューは作業パスを持たないため、transcript 内の記録から補います（記録が無ければホームディレクトリに寄せます）。
+transcript が消えている行は `missing`、形式の合わない行は `unparsed` として報告し、内容は推測しません。
 
 ラッパーや別名、別ディレクトリの旧 Hook は自動識別しないため、変更予定と実際の設定を照合してください。
 設定ファイル単位の更新は atomic ですが、複数ファイルの一括トランザクションではありません。

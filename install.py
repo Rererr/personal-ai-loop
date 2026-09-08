@@ -113,8 +113,10 @@ def prepare(home, root, tool, uninstall, replace_legacy):
             if not link.is_symlink() or Path(os.readlink(link)) != target:
                 raise ValueError(f"既存の同名スキルを上書きしません: {link}")
         links.append((link, target))
-    return {"tool": tool, "root": root, "config": config, "before": before,
-            "after": json.dumps(value, ensure_ascii=False, indent=2) + "\n",
+    # 整形の違いだけで書き換えないよう、比較は文字列でなく構造で行う。
+    changed = value != json.loads(before)
+    return {"tool": tool, "root": root, "config": config, "before": before, "changed": changed,
+            "after": json.dumps(value, ensure_ascii=False, indent=2) + "\n" if changed else before,
             "links": links, "removed": removed}
 
 
@@ -211,8 +213,8 @@ def main():
         wizard(args, home, roots)
     if not args.tool:
         raise ValueError("--tool を指定するか、端末から引数なしで対話セットアップを実行してください")
-    if args.retire_legacy and not args.replace_legacy and not args.uninstall:
-        raise ValueError("--retire-legacy は --replace-legacy と併用してください")
+    if args.retire_legacy and (args.uninstall or not args.replace_legacy):
+        raise ValueError("--retire-legacy は --replace-legacy と併用し、--uninstall とは併用できません")
     app = home / ".local/share" / NAME / "app"
     if app.exists() or app.is_symlink():
         if not app.is_symlink() or app.resolve() != SOURCE:
@@ -223,7 +225,7 @@ def main():
         ("use", args.knowledge_use), ("clone", args.knowledge_clone), ("init", args.knowledge_init)) if value), None)
     for plan in plans:
         print(json.dumps({"tool": plan["tool"], "config": str(plan["config"]),
-                          "changed": plan["before"] != plan["after"],
+                          "changed": plan["changed"],
                           "skills": [str(link) for link, _ in plan["links"]], "remove": plan["removed"],
                           "legacy": [str(p) for p in legacy_present(plan["root"])] if args.retire_legacy else [],
                           "action": "uninstall" if args.uninstall else "install"}, ensure_ascii=False))
@@ -246,7 +248,7 @@ def main():
     state = home / ".local/state" / NAME
     for plan in plans:
         config = plan["config"]
-        if plan["before"] != plan["after"]:
+        if plan["changed"]:
             if config.exists():
                 backup = state / "backups" / stamp / plan["root"].name / config.name
                 atomic_write(backup, plan["before"])
@@ -275,7 +277,7 @@ def main():
     if args.retire_legacy or knowledge_action:
         db = loop.connect(state)
         try:
-            if args.retire_legacy and not args.uninstall:
+            if args.retire_legacy:
                 for plan in plans:
                     print(json.dumps({"retired": plan["tool"], **retire_legacy(home, plan, stamp, db)},
                                      ensure_ascii=False))

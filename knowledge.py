@@ -1,5 +1,6 @@
 """個人用 knowledge リポジトリのテンプレートと検査。ツール非依存の Markdown リポジトリを扱う。"""
 from pathlib import Path
+import shutil
 import subprocess
 
 CATEGORIES = ("patterns", "decisions", "runbooks")
@@ -71,7 +72,11 @@ def clone(url, target):
     if target.exists():
         raise ValueError(f"既に存在する: {target}")
     subprocess.run(["git", "clone", "-q", url, str(target)], check=True, capture_output=True, text=True)
-    return adopt(target)
+    try:
+        return adopt(target)
+    except ValueError:
+        shutil.rmtree(target)  # 受け入れない clone を残すと再実行が「既に存在する」で止まる
+        raise
 
 
 def adopt(target):

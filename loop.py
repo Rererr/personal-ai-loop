@@ -333,21 +333,23 @@ def migrate_legacy(db, home, tool, root_override):
     queue = root / "retro" / "queue.md"
     if not queue.is_file():
         return {"queue": str(queue), "found": False}
-    imported, missing = [], []
+    imported, missing, unparsed = [], [], []
     for line in queue.read_text(encoding="utf-8").splitlines():
         match = LEGACY_QUEUE.search(line)
         if not match:
+            if line.strip():
+                unparsed.append(line)
             continue
         session, transcript = match.groups()
         path = Path(transcript)
         if not path.is_file():
             missing.append(transcript)
             continue
-        # 旧キューは作業パスを持たないため transcript 自身の記録から補う。
+        # 旧キューは作業パスを持たないため transcript 自身の記録から補い、無ければホームに寄せる。
         cwd = transcript_cwd(path) or str(home)
-        imported.append({"session": session, "signals": capture(
+        imported.append({"session": session, "cwd": cwd, "signals": capture(
             db, tool, {"session_id": session, "transcript_path": transcript, "cwd": cwd})})
-    return {"queue": str(queue), "found": True, "imported": imported, "missing": missing}
+    return {"queue": str(queue), "found": True, "imported": imported, "missing": missing, "unparsed": unparsed}
 
 
 def parse_roots(values):
@@ -362,9 +364,9 @@ def parse_roots(values):
 
 def main():
     parser = argparse.ArgumentParser(description="個人のフィードバック候補と個人設定をローカルで管理する")
-    parser.add_argument("--state", type=Path,
-                        default=Path.home() / ".local/state" / NAME)
     parser.add_argument("--home", type=Path, default=Path.home())
+    parser.add_argument("--state", type=Path,
+                        help="ローカルデータの場所（既定は --home 配下の .local/state/personal-ai-loop）")
     parser.add_argument("--root", action="append", metavar="TOOL=PATH",
                         help="ツールの設定ディレクトリを明示する（既定は環境変数か ~/.<tool>）")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -396,8 +398,9 @@ def main():
     know_sub.add_parser("unset", help="登録を外す（ファイルは消さない）")
     args = parser.parse_args()
     os.umask(0o077)
-    state = args.state.expanduser().absolute()
     home = args.home.expanduser().resolve()
+    # --home だけ差し替えた検証で本物のデータへ触れないよう、state は home から導く。
+    state = (args.state or home / ".local/state" / NAME).expanduser().absolute()
     if state.resolve().is_relative_to(Path(__file__).resolve().parent):
         raise ValueError("private state must be outside the distribution repository")
     roots = parse_roots(args.root)
