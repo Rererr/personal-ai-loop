@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.DS_Store
+.venv/
+*.sqlite3*
+.env
+.env.*
+personal.md
+proposals/
+backups/
