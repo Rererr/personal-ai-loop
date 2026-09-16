@@ -8,10 +8,19 @@ import subprocess
 import sys
 import tempfile
 
-from loop import signals
+from loop import signals, tool_root, TOOL_ENV
 
 
 ROOT = Path(__file__).resolve().parent
+
+
+def isolate_tool_env():
+    # 設定ディレクトリの切替変数は --home の仮ホームより優先されるため、引き継ぐと実環境を検査してしまう。
+    # 個々の subprocess に env を渡すのでなく、テストプロセス自身から落として全経路に効かせる。
+    return sorted(name for name in TOOL_ENV.values() if os.environ.pop(name, None) is not None)
+
+
+isolate_tool_env()
 
 
 def run(script, *args, data=None, ok=True):
@@ -162,6 +171,12 @@ def main():
     with tempfile.TemporaryDirectory(prefix="personal-loop-test-") as temporary:
         base = Path(temporary)
         home = base / "home ' with $ and ` chars"
+        # 両変数が未設定の CI でも撤去を検出できるよう、障害条件をテスト自身で作ってから密閉を確かめる。
+        for name in TOOL_ENV.values():
+            os.environ[name] = str(base / "must-not-be-used")
+        assert tool_root(home, "claude") == base / "must-not-be-used"  # 本番は環境変数が --home より強い
+        assert isolate_tool_env() == sorted(TOOL_ENV.values())
+        assert tool_root(home, "claude") == home / ".claude" and tool_root(home, "codex") == home / ".codex"
         state = home / ".local/state/personal-ai-loop"
         codex = home / ".codex/hooks.json"
         claude = home / ".claude/settings.json"
