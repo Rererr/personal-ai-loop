@@ -18,9 +18,12 @@ NAME = "personal-ai-loop"
 TOOLS = ("claude", "codex")
 FIX = re.compile(r"違う|ちがう|そうじゃな|そうではな|やり直|やりなおし|間違|勝手に|余計な|戻して|望んでいるものでは|望んで(?:い)?な|\b(?:that's wrong|not what I asked|undo that|don't do that)\b", re.I)
 APPROVE = re.compile(r"採用|それでいこ|その方針で|いい感じ|良い感じ|いいね|良いね|完璧|素晴らし|さすが|気に入|\b(?:let's go with that|that's perfect|I like that)\b", re.I)
+# サブエージェントの報告は user 行として注入されるため、本人の発言と同じ経路で拾える。
+# 報告が引用する設計案の「採用」「仕様が違う」で誤検知した実例がある（実測 4件中 3件）。
 EXCLUDED = ("<", "# AGENTS.md instructions", "Base directory for this skill:",
             "This session is being continued", "Caveat:", "[tomobit]",
-            "A session-scoped Stop hook is now active")
+            "A session-scoped Stop hook is now active",
+            "Another Claude session sent a message")
 LEGACY_QUEUE = re.compile(r"session=(\S+).*transcript=(\S+)")
 PERSONAL_LIMIT = 8000
 

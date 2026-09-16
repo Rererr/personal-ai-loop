@@ -196,7 +196,12 @@ def main():
                 {"type": "assistant", "message": {"content": "やり直します"}},
                 user("そうじゃない。勝手に変更しないで"),
                 user([{"type": "tool_result", "content": "間違っている"},
-                      {"type": "text", "text": "その方針で。いい感じ"}])]
+                      {"type": "text", "text": "その方針で。いい感じ"}]),
+                # サブエージェントの報告は user 行で届く。引用された「採用」「違う」で拾わない。
+                user("Another Claude session sent a message:\n"
+                     "<agent-message from=\"a1\">\n"
+                     "  | A（推奨） | 採用。要件を満たす最小構成 |\n"
+                     "  現行実装は1件失敗で即停止しており、仕様が違う。\n")]
         write_rows(transcript, rows)
         event = {"session_id": "session-a", "cwd": str(base / "project-a"), "transcript_path": str(transcript)}
         cli = ("--state", state)
