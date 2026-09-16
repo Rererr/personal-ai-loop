@@ -196,7 +196,14 @@ def main():
                 {"type": "assistant", "message": {"content": "やり直します"}},
                 user("そうじゃない。勝手に変更しないで"),
                 user([{"type": "tool_result", "content": "間違っている"},
-                      {"type": "text", "text": "その方針で。いい感じ"}])]
+                      {"type": "text", "text": "その方針で。いい感じ"}]),
+                # サブエージェントの報告は user 行で届く。引用された「採用」「違う」で拾わない。
+                user("Another Claude session sent a message:\n"
+                     "<agent-message from=\"a1\">\n"
+                     "  | A（推奨） | 採用。要件を満たす最小構成 |\n"
+                     "  現行実装は1件失敗で即停止しており、仕様が違う。\n"),
+                # 前置きを話題にした本人の指摘は、前方一致が : まで及ぶので残る。
+                user("Another Claude session sent a message の除外は間違っている。戻して")]
         write_rows(transcript, rows)
         event = {"session_id": "session-a", "cwd": str(base / "project-a"), "transcript_path": str(transcript)}
         cli = ("--state", state)
@@ -204,7 +211,7 @@ def main():
         with ThreadPoolExecutor(max_workers=3) as pool:
             list(pool.map(lambda _: run("loop.py", *stop_args, data=event), range(3)))
         pending = json.loads(run("loop.py", *cli, "queue"))
-        assert [s["kind"] for s in pending] == ["fix", "approve"]
+        assert [s["kind"] for s in pending] == ["fix", "approve", "fix"]
         assert "そうじゃない" not in (state / "queue.sqlite3").read_bytes().decode("utf-8", errors="ignore")
         evidence = json.loads(run("loop.py", *cli, "inspect", pending[0]["id"]))
         assert evidence[0]["evidence"]["text"] == rows[5]["message"]["content"]
