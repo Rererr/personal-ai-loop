@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
+import atexit
 from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 from pathlib import Path
 import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -12,15 +14,31 @@ from loop import signals, tool_root, TOOL_ENV
 
 
 ROOT = Path(__file__).resolve().parent
+GIT_CONFIG_ENV = ("GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM")
+STUB = Path(tempfile.mkdtemp(prefix="personal-loop-stub-"))
+atexit.register(shutil.rmtree, STUB, True)
 
 
-def isolate_tool_env():
-    # 設定ディレクトリの切替変数は --home の仮ホームより優先されるため、引き継ぐと実環境を検査してしまう。
-    # 個々の subprocess に env を渡すのでなく、テストプロセス自身から落として全経路に効かせる。
-    return sorted(name for name in TOOL_ENV.values() if os.environ.pop(name, None) is not None)
+def isolate_environment(stub=STUB):
+    # 実環境より仮ホームを優先させる。個々の subprocess に env を渡すのでなく、テストプロセス自身から
+    # 落として全経路に効かせる（install.py・loop.py・フックの shell 実行・in-process 呼び出し）。
+    dropped = sorted(name for name in TOOL_ENV.values() if os.environ.pop(name, None) is not None)
+    # git は ~/.gitconfig と system 設定を読む。commit.gpgsign 等があるだけで結果が変わるため、
+    # 存在しないファイルへ向けて空にする（git は無いファイルを空の設定として扱う）。
+    for name in GIT_CONFIG_ENV:
+        os.environ[name] = str(stub / "absent-gitconfig")
+    # status は PATH 上の teamai を実行する。実バイナリを走らせないよう先頭のスタブへ寄せる。
+    stub.mkdir(parents=True, exist_ok=True)
+    teamai = stub / "teamai"
+    teamai.write_text("#!/bin/sh\necho 'teamai 0.0.0-stub'\n", encoding="utf-8")
+    teamai.chmod(0o755)
+    prefix = f"{stub}{os.pathsep}"
+    if not os.environ.get("PATH", "").startswith(prefix):
+        os.environ["PATH"] = prefix + os.environ.get("PATH", "")
+    return dropped
 
 
-isolate_tool_env()
+isolate_environment()
 
 
 def run(script, *args, data=None, ok=True):
@@ -29,6 +47,12 @@ def run(script, *args, data=None, ok=True):
                             capture_output=True, text=True)
     assert (result.returncode == 0) == ok, (result.args, result.stdout, result.stderr)
     return result.stdout
+
+
+def git_config(key):
+    # リポジトリ外で引くと global と system だけを見るので、密閉できているかの判定に使える。
+    return subprocess.run(["git", "config", "--get", key], cwd=STUB,
+                          capture_output=True, text=True).stdout.strip()
 
 
 def write_rows(path, rows):
@@ -171,12 +195,18 @@ def main():
     with tempfile.TemporaryDirectory(prefix="personal-loop-test-") as temporary:
         base = Path(temporary)
         home = base / "home ' with $ and ` chars"
-        # 両変数が未設定の CI でも撤去を検出できるよう、障害条件をテスト自身で作ってから密閉を確かめる。
+        # 実環境が無害な CI でも撤去を検出できるよう、漏れる条件をテスト自身で作ってから密閉を確かめる。
         for name in TOOL_ENV.values():
             os.environ[name] = str(base / "must-not-be-used")
+        hostile = base / "hostile-gitconfig"
+        hostile.write_text("[commit]\n\tgpgsign = true\n", encoding="utf-8")
+        os.environ["GIT_CONFIG_GLOBAL"] = str(hostile)
         assert tool_root(home, "claude") == base / "must-not-be-used"  # 本番は環境変数が --home より強い
-        assert isolate_tool_env() == sorted(TOOL_ENV.values())
+        assert git_config("commit.gpgsign") == "true"  # global 設定はテストにも効いてしまう
+        assert isolate_environment() == sorted(TOOL_ENV.values())
         assert tool_root(home, "claude") == home / ".claude" and tool_root(home, "codex") == home / ".codex"
+        assert git_config("commit.gpgsign") == ""  # 実環境の ~/.gitconfig は読まれない
+        assert shutil.which("teamai") == str(STUB / "teamai")  # 実バイナリを実行しない
         state = home / ".local/state/personal-ai-loop"
         codex = home / ".codex/hooks.json"
         claude = home / ".claude/settings.json"
