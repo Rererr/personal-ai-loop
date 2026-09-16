@@ -8,10 +8,15 @@ import subprocess
 import sys
 import tempfile
 
-from loop import signals
+from loop import signals, TOOL_ENV
 
 
 ROOT = Path(__file__).resolve().parent
+
+# 設定ディレクトリの切替変数は --home の仮ホームより優先されるため、引き継ぐと実環境を検査してしまう。
+# 個々の subprocess に env を渡すのでなく、テストプロセス自身から落として全経路に効かせる。
+for _name in TOOL_ENV.values():
+    os.environ.pop(_name, None)
 
 
 def run(script, *args, data=None, ok=True):

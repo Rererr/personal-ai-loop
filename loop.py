@@ -23,12 +23,12 @@ EXCLUDED = ("<", "# AGENTS.md instructions", "Base directory for this skill:",
             "A session-scoped Stop hook is now active")
 LEGACY_QUEUE = re.compile(r"session=(\S+).*transcript=(\S+)")
 PERSONAL_LIMIT = 8000
+# 各ツール自身が設定ディレクトリの切替に使う名前に合わせる。テストはこれを見て環境を落とす。
+TOOL_ENV = {"claude": "CLAUDE_CONFIG_DIR", "codex": "CODEX_HOME"}
 
 
 def tool_root(home, tool, override=None):
-    # 環境変数は各ツール自身が設定ディレクトリの切替に使う名前に合わせる。
-    env = {"claude": "CLAUDE_CONFIG_DIR", "codex": "CODEX_HOME"}[tool]
-    value = override or os.environ.get(env) or (home / f".{tool}")
+    value = override or os.environ.get(TOOL_ENV[tool]) or (home / f".{tool}")
     return Path(value).expanduser()
 
 
