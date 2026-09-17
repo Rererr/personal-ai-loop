@@ -200,7 +200,8 @@ def main():
     # 起動時の密閉が extended() より前に効いていること。撤去すると以降が実環境のまま走るが、
     # 無害な環境では素通りしてしまうので、密閉の痕跡そのものを見る。
     assert os.environ["PATH"].startswith(f"{STUB}{os.pathsep}")
-    assert [os.environ[name] for name in GIT_CONFIG_ENV] == [str(STUB / "absent-gitconfig")] * 2
+    # 検査対象の GIT_CONFIG_ENV を参照すると、名前の取り違えを検証側も一緒に引き継いで素通りする。
+    assert [os.environ["GIT_CONFIG_GLOBAL"], os.environ["GIT_CONFIG_SYSTEM"]] == [str(STUB / "absent-gitconfig")] * 2
     extended()
     with tempfile.TemporaryDirectory(prefix="personal-loop-test-") as temporary:
         base = Path(temporary)
@@ -210,11 +211,11 @@ def main():
             os.environ[name] = str(base / "must-not-be-used")
         hostile = base / "hostile-gitconfig"
         hostile.write_text("[commit]\n\tgpgsign = true\n", encoding="utf-8")
-        for name in GIT_CONFIG_ENV:  # global と system を個別に検出できるよう1つずつ汚す
+        for name in ("GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM"):  # 個別に検出できるよう1つずつ汚す
             os.environ[name] = str(hostile)
             assert git_config("commit.gpgsign") == "true"
             os.environ[name] = str(STUB / "absent-gitconfig")  # 外すと実環境の設定が復活してしまう
-        for name in GIT_CONFIG_ENV:
+        for name in ("GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM"):
             os.environ[name] = str(hostile)
         os.environ.update(GIT_CONFIG_COUNT="1", GIT_CONFIG_KEY_0="commit.gpgsign", GIT_CONFIG_VALUE_0="true")
         assert tool_root(home, "claude") == base / "must-not-be-used"  # 本番は環境変数が --home より強い
