@@ -15,6 +15,9 @@ from loop import signals, tool_root, TOOL_ENV
 
 ROOT = Path(__file__).resolve().parent
 GIT_CONFIG_ENV = ("GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM")
+# テスト中に実行されうる外部コマンド。status が teamai --version を、knowledge の pre-commit が
+# gitleaks を走らせる。中身は結果が機械依存にならない最小のものにする。
+STUB_BINARIES = {"teamai": "echo 'teamai 0.0.0-stub'", "gitleaks": "exit 0"}
 STUB = Path(tempfile.mkdtemp(prefix="personal-loop-stub-"))
 atexit.register(shutil.rmtree, STUB, True)
 
@@ -29,11 +32,12 @@ def isolate_environment(stub=STUB):
         os.environ[name] = str(stub / "absent-gitconfig")
     # GIT_CONFIG_KEY_n / VALUE_n は COUNT が無ければ読まれないので、件数だけ落とせば足りる。
     os.environ.pop("GIT_CONFIG_COUNT", None)
-    # status は PATH 上の teamai を実行する。実バイナリを走らせないよう先頭のスタブへ寄せる。
+    # 実バイナリを走らせないよう PATH 先頭のスタブへ寄せる。
     stub.mkdir(parents=True, exist_ok=True)
-    teamai = stub / "teamai"
-    teamai.write_text("#!/bin/sh\necho 'teamai 0.0.0-stub'\n", encoding="utf-8")
-    teamai.chmod(0o755)
+    for name, body in STUB_BINARIES.items():
+        binary = stub / name
+        binary.write_text(f"#!/bin/sh\n{body}\n", encoding="utf-8")
+        binary.chmod(0o755)
     prefix = f"{stub}{os.pathsep}"
     if not os.environ.get("PATH", "").startswith(prefix):
         os.environ["PATH"] = prefix + os.environ.get("PATH", "")
@@ -217,7 +221,8 @@ def main():
         assert isolate_environment() == sorted(TOOL_ENV.values())
         assert tool_root(home, "claude") == home / ".claude" and tool_root(home, "codex") == home / ".codex"
         assert git_config("commit.gpgsign") == ""  # global・system・COUNT のいずれからも読まれない
-        assert shutil.which("teamai") == str(STUB / "teamai")
+        # 検査対象の STUB_BINARIES を参照すると、エントリを消したとき assert も一緒に消えて素通りする。
+        assert [shutil.which("teamai"), shutil.which("gitleaks")] == [str(STUB / "teamai"), str(STUB / "gitleaks")]
         state = home / ".local/state/personal-ai-loop"
         codex = home / ".codex/hooks.json"
         claude = home / ".claude/settings.json"
