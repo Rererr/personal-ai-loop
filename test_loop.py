@@ -206,16 +206,17 @@ def main():
             os.environ[name] = str(base / "must-not-be-used")
         hostile = base / "hostile-gitconfig"
         hostile.write_text("[commit]\n\tgpgsign = true\n", encoding="utf-8")
-        for name in GIT_CONFIG_ENV:  # global と system を個別に検出できるよう両方を汚す
+        for name in GIT_CONFIG_ENV:  # global と system を個別に検出できるよう1つずつ汚す
             os.environ[name] = str(hostile)
             assert git_config("commit.gpgsign") == "true"
-            os.environ.pop(name)
+            os.environ[name] = str(STUB / "absent-gitconfig")  # 外すと実環境の設定が復活してしまう
         for name in GIT_CONFIG_ENV:
             os.environ[name] = str(hostile)
+        os.environ.update(GIT_CONFIG_COUNT="1", GIT_CONFIG_KEY_0="commit.gpgsign", GIT_CONFIG_VALUE_0="true")
         assert tool_root(home, "claude") == base / "must-not-be-used"  # 本番は環境変数が --home より強い
         assert isolate_environment() == sorted(TOOL_ENV.values())
         assert tool_root(home, "claude") == home / ".claude" and tool_root(home, "codex") == home / ".codex"
-        assert git_config("commit.gpgsign") == ""
+        assert git_config("commit.gpgsign") == ""  # global・system・COUNT のいずれからも読まれない
         assert shutil.which("teamai") == str(STUB / "teamai")
         state = home / ".local/state/personal-ai-loop"
         codex = home / ".codex/hooks.json"
