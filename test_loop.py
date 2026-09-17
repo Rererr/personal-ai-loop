@@ -27,6 +27,8 @@ def isolate_environment(stub=STUB):
     # 存在しないファイルへ向けて空にする（git は無いファイルを空の設定として扱う）。
     for name in GIT_CONFIG_ENV:
         os.environ[name] = str(stub / "absent-gitconfig")
+    # GIT_CONFIG_KEY_n / VALUE_n は COUNT が無ければ読まれないので、件数だけ落とせば足りる。
+    os.environ.pop("GIT_CONFIG_COUNT", None)
     # status は PATH 上の teamai を実行する。実バイナリを走らせないよう先頭のスタブへ寄せる。
     stub.mkdir(parents=True, exist_ok=True)
     teamai = stub / "teamai"
@@ -191,6 +193,10 @@ def extended():
 
 
 def main():
+    # 起動時の密閉が extended() より前に効いていること。撤去すると以降が実環境のまま走るが、
+    # 無害な環境では素通りしてしまうので、密閉の痕跡そのものを見る。
+    assert os.environ["PATH"].startswith(f"{STUB}{os.pathsep}")
+    assert [os.environ[name] for name in GIT_CONFIG_ENV] == [str(STUB / "absent-gitconfig")] * 2
     extended()
     with tempfile.TemporaryDirectory(prefix="personal-loop-test-") as temporary:
         base = Path(temporary)
@@ -200,13 +206,17 @@ def main():
             os.environ[name] = str(base / "must-not-be-used")
         hostile = base / "hostile-gitconfig"
         hostile.write_text("[commit]\n\tgpgsign = true\n", encoding="utf-8")
-        os.environ["GIT_CONFIG_GLOBAL"] = str(hostile)
+        for name in GIT_CONFIG_ENV:  # global と system を個別に検出できるよう両方を汚す
+            os.environ[name] = str(hostile)
+            assert git_config("commit.gpgsign") == "true"
+            os.environ.pop(name)
+        for name in GIT_CONFIG_ENV:
+            os.environ[name] = str(hostile)
         assert tool_root(home, "claude") == base / "must-not-be-used"  # 本番は環境変数が --home より強い
-        assert git_config("commit.gpgsign") == "true"  # global 設定はテストにも効いてしまう
         assert isolate_environment() == sorted(TOOL_ENV.values())
         assert tool_root(home, "claude") == home / ".claude" and tool_root(home, "codex") == home / ".codex"
-        assert git_config("commit.gpgsign") == ""  # 実環境の ~/.gitconfig は読まれない
-        assert shutil.which("teamai") == str(STUB / "teamai")  # 実バイナリを実行しない
+        assert git_config("commit.gpgsign") == ""
+        assert shutil.which("teamai") == str(STUB / "teamai")
         state = home / ".local/state/personal-ai-loop"
         codex = home / ".codex/hooks.json"
         claude = home / ".claude/settings.json"
