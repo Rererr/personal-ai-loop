@@ -12,8 +12,7 @@ Claude Code や Codex で受けた修正・承認を、自分の環境の改善�
                                          └─ 配布機構への修正案
 ```
 
-チームの共有資産は [TeamAI](https://github.com/Tencent/teamai-cli) で配ります。
-その雛形は [team-ai-starter](https://github.com/Rererr/team-ai-starter) にあり、この仕組みと役割を分けています。
+チームの共有資産は通常のリポジトリと PR で配り、この仕組みとは役割を分けています。
 
 ## 導入
 
@@ -64,7 +63,7 @@ Stop Hook が修正・承認らしい発言を検出し、次のセッション�
 pal status
 ```
 
-導入先ツールと Hook、振り返り候補の件数、`personal.md` の大きさ、knowledge リポジトリの状態、TeamAI の接続状況、旧機構の残りを表示します。
+導入先ツールと Hook、振り返り候補の件数、`personal.md` の大きさ、knowledge リポジトリの状態、旧機構の残りを表示します。
 `--json` を付けると機械可読になります。
 
 ```bash
@@ -136,12 +135,9 @@ python3 install.py --tool claude --tool codex --uninstall --apply
 ## チームと使う
 
 新メンバーに案内するのは「このリポジトリ」と「チームの共有リポジトリ」の2つです。
-チーム側は TeamAI のプロジェクトスコープで配布できます。
+チーム側の共有資産は通常のリポジトリと PR で配ります。
 名前が `personal-` で始まるスキルは個人側の管理領域とし、チームから同名で配布しません。
 個人のキューやメモリからチームへ全文を自動送信せず、一般化した変更だけを PR へ昇格します。
-
-TeamAI にも「セッションの摩擦」を検出して共有を促す Hook があり、標準設定では両方の案内が出ます。
-どちらを入口にするか、TeamAI 側で何を止められるかは [TeamAI との境界](docs/teamai.md) にまとめました。
 
 ## 既存環境からの移行
 

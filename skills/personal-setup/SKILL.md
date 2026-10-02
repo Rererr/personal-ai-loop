@@ -1,6 +1,6 @@
 ---
 name: personal-setup
-description: personal-ai-loop の導入状態を確認し、個人用 knowledge リポジトリの作成・接続、旧機構からの移行、teamai との併用状況を本人と対話しながら整える。「セットアップ」「導入状態」「knowledge リポジトリを作りたい／つなぎたい」「移行したい」と言われたとき、および初回導入直後に使う。
+description: personal-ai-loop の導入状態を確認し、個人用 knowledge リポジトリの作成・接続、旧機構からの移行を本人と対話しながら整える。「セットアップ」「導入状態」「knowledge リポジトリを作りたい／つなぎたい」「移行したい」と言われたとき、および初回導入直後に使う。
 ---
 
 # 個人環境のセットアップ
@@ -15,7 +15,7 @@ CLI は `~/.local/bin/pal`（無ければ `python3 ~/.local/share/personal-ai-lo
 pal status
 ```
 
-読み取り専用。表示の各行が「導入先ツール／Hook／スキル」「振り返り候補」「personal.md」「knowledge」「teamai」「旧機構の残り」に対応する。
+読み取り専用。表示の各行が「導入先ツール／Hook／スキル」「振り返り候補」「personal.md」「knowledge」「旧機構の残り」に対応する。
 `--json` で機械可読になる。分からない項目は推測せず、表示をそのまま伝える。
 
 ## 2. 足りないものを本人に聞く
@@ -28,7 +28,6 @@ pal status
 | 旧キューあり（`retro/queue.md`） | 旧 Hook を置き換え、旧キューを取り込んで旧ファイルを退避してよいか |
 | knowledge 未設定 | 既にあるか（ローカルのパス／リモート URL）。無ければ新規作成するか、作成先、origin の URL |
 | knowledge の pre-commit 未設定・gitleaks 未導入 | `git config core.hooksPath githooks` と `gitleaks` 導入を案内 |
-| teamai 導入済み | チームリポジトリの接続状況を伝えるだけ。teamai の設定はこのスキルで変えない |
 
 knowledge リポジトリは「プロジェクト横断で再利用する、本人が採用を判断した規則」を置く private の git リポジトリ。
 会社の情報や会話ログは入れない。用途を一言で説明してから聞く。
@@ -58,4 +57,3 @@ python3 ~/.local/share/personal-ai-loop/app/install.py --tool claude --tool code
 
 - 本人の承認なしに `--apply` を付けない。旧ファイルの削除は行わない（退避のみ）
 - knowledge リポジトリへノートを書かない（それは作業中の昇格や personal-retro の役目）
-- teamai の init / uninstall / 設定変更を代行しない。必要なら公式手順を案内する
