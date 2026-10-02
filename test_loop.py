@@ -15,9 +15,9 @@ from loop import signals, tool_root, TOOL_ENV
 
 ROOT = Path(__file__).resolve().parent
 GIT_CONFIG_ENV = ("GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM")
-# テスト中に実行されうる外部コマンド。status が teamai --version を、knowledge の pre-commit が
-# gitleaks を走らせる。中身は結果が機械依存にならない最小のものにする。
-STUB_BINARIES = {"teamai": "echo 'teamai 0.0.0-stub'", "gitleaks": "exit 0"}
+# テスト中に実行されうる外部コマンド。knowledge の pre-commit が gitleaks を走らせる。
+# 中身は結果が機械依存にならない最小のものにする。
+STUB_BINARIES = {"gitleaks": "exit 0"}
 STUB = Path(tempfile.mkdtemp(prefix="personal-loop-stub-"))
 atexit.register(shutil.rmtree, STUB, True)
 
@@ -223,7 +223,7 @@ def main():
         assert tool_root(home, "claude") == home / ".claude" and tool_root(home, "codex") == home / ".codex"
         assert git_config("commit.gpgsign") == ""  # global・system・COUNT のいずれからも読まれない
         # 検査対象の STUB_BINARIES を参照すると、エントリを消したとき assert も一緒に消えて素通りする。
-        assert [shutil.which("teamai"), shutil.which("gitleaks")] == [str(STUB / "teamai"), str(STUB / "gitleaks")]
+        assert shutil.which("gitleaks") == str(STUB / "gitleaks")
         state = home / ".local/state/personal-ai-loop"
         codex = home / ".codex/hooks.json"
         claude = home / ".claude/settings.json"

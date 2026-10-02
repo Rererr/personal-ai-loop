@@ -236,22 +236,6 @@ def knowledge_status(repo):
     return info
 
 
-def teamai_status(home):
-    binary = shutil.which("teamai")
-    info = {"installed": binary is not None}
-    if binary is None:
-        return info
-    version = subprocess.run([binary, "--version"], capture_output=True, text=True)
-    info["version"] = version.stdout.strip() if version.returncode == 0 else None
-    config = home / ".teamai" / "config.yaml"
-    info["user_scope"] = config.is_file()
-    if config.is_file():
-        text = config.read_text(encoding="utf-8")
-        remote = re.search(r"^\s*remote:\s*(\S+)", text, re.M)
-        info["repo"] = remote.group(1) if remote else None
-    return info
-
-
 def status(db, state, home, roots):
     # Hook はリンク越しのパス（~/.local/share 配下）で登録されるため、実体でなくリンク側と比べる。
     script = home / ".local/share" / NAME / "app" / "loop.py"
@@ -285,7 +269,6 @@ def status(db, state, home, roots):
                         "limit": PERSONAL_LIMIT},
         "proposals": len([p for p in proposals.iterdir() if p.is_file()]) if proposals.is_dir() else 0,
         "knowledge": knowledge_status(knowledge_path(state)),
-        "teamai": teamai_status(home),
     }
 
 
@@ -327,12 +310,6 @@ def render_status(info):
         if not k["gitleaks"]:
             parts.append("gitleaks 未導入")
         lines.append(f"  knowledge: {k['path']} ({', '.join(parts)})")
-    t = info["teamai"]
-    if t["installed"]:
-        scope = f"user scope: {t.get('repo')}" if t.get("user_scope") else "user scope 未接続"
-        lines.append(f"  teamai: {t.get('version') or '版数不明'} ({scope})")
-    else:
-        lines.append("  teamai: 未導入（チーム共有は通常のPRで提案）")
     return "\n".join(lines)
 
 
